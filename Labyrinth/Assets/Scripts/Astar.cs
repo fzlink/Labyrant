@@ -35,7 +35,7 @@ public static class Astar
 
             foreach (Node item in neighbours) 
             {
-                if(item.x >= 0 && item.y >= 0 && item.x < labGrid.width && item.y < labGrid.height && grid[item.x,item.y] == 0)
+                if(item.x >= 0 && item.y >= 0 && item.x < labGrid.width && item.y < labGrid.height && (grid[item.x,item.y] == 0 || grid[item.x, item.y] == 2))
                 {
                     if (visited[item.x, item.y] == 0)
                     {

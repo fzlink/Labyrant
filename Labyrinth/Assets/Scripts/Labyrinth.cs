@@ -1,9 +1,19 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
+
+public enum Directions
+{
+    L=1,
+    U=2,
+    R=3,
+    D=4
+}
+
 
 public class Labyrinth : MonoBehaviour
 {
@@ -13,7 +23,10 @@ public class Labyrinth : MonoBehaviour
     public TileBase characterTile;
     public TileBase finishTile;
 
+    public static Labyrinth instance;
+
     public int size;
+    bool IsAlgorithmRunning;
 
     LabGrid labGrid;
 
@@ -31,8 +44,13 @@ public class Labyrinth : MonoBehaviour
     public Toggle horizontalToggle;
     public Toggle verticalToggle;
     public Text message;
+    public TMP_Text generationNumber;
 
-    // Start is called before the first frame update
+    private void Awake()
+    {
+        instance = this;
+    }
+
     void Start()
     {
         GenerateMap();
@@ -79,6 +97,7 @@ public class Labyrinth : MonoBehaviour
                 else if(x == size-2 && y == 1)
                 {
                     tileBases[x + y * bounds.size.x] = finishTile;
+                    labGrid.grid[x, y] = 2;
                 }
                 else if(x==1 && y == size - 2)
                 {
@@ -114,6 +133,8 @@ public class Labyrinth : MonoBehaviour
 
     private void Update()
     {
+        if (IsAlgorithmRunning) return;
+
         if (Input.GetMouseButton(0))
             isClicked = true;
         else
@@ -193,7 +214,7 @@ public class Labyrinth : MonoBehaviour
     {
         GenerateMap();
         int totalObstacleNum = Convert.ToInt32(randomObstacleNumField.text);
-        if(totalObstacleNum > size)
+        if(totalObstacleNum > size*2)
         {
             randomObstacleNumField.text = "";
             randomObstacleNumField.placeholder.GetComponent<Text>().text = "Must be less than size";
@@ -251,13 +272,82 @@ public class Labyrinth : MonoBehaviour
     public void Run()
     {
         message.gameObject.SetActive(false);
-        if (!Astar.FindPath(labGrid, new Vector2Int(1, size - 2), new Vector2Int(size - 2, 1)))
+        Vector2Int start = new Vector2Int(1, size - 2);
+        Vector2Int finish = new Vector2Int(size - 2, 1);
+        if (!Astar.FindPath(labGrid, start, finish))
         {
             message.gameObject.SetActive(true);
             message.text = "NO PATH AVAILABLE";
             message.color = Color.red;
             return;
         }
+        IsAlgorithmRunning = true;
+        bool isTimeout;
+        List<Child> bestOfGeneration = GAController.GeneticAlgorithm(labGrid.grid,size, start, finish, out isTimeout);
+        if(bestOfGeneration != null)
+        {
+            message.gameObject.SetActive(true);
+            message.text = "PATH FOUND";
+            message.color = Color.blue;
+
+            StartCoroutine(ShowGenerations(bestOfGeneration, start, finish));
+        }
+        else if (isTimeout)
+        {
+            message.gameObject.SetActive(true);
+            message.text = "TIMEOUT";
+            message.color = Color.blue;
+        }
+
 
     }
+
+    private IEnumerator ShowGenerations(List<Child> bestOfGeneration, Vector2Int start, Vector2Int finish)
+    {
+        List<Vector3Int> coloredPath;
+        for (int i = 0; i < bestOfGeneration.Count; i++)
+        {
+            coloredPath = ShowPath(bestOfGeneration[i], start, finish);
+            generationNumber.text = i.ToString();
+            yield return new WaitForSeconds(0.1f);
+            if(i < bestOfGeneration.Count-1)
+                CleanPath(coloredPath);
+        }
+    }
+
+    private void CleanPath(List<Vector3Int> coloredPath)
+    {
+        for (int i = 0; i < coloredPath.Count; i++)
+        {
+            tileMap.SetColor(coloredPath[i], Color.white);
+        }
+    }
+
+    public List<Vector3Int> ShowPath(Child child, Vector2Int start, Vector2Int finish)
+    {
+        bool foundFinish = false;
+        int i = 0;
+        Vector2Int moveOffset = Vector2Int.zero;
+        Vector2Int pos = start;
+        List<Vector3Int> coloredPath = new List<Vector3Int>();
+        while (!foundFinish && i < child.path.Count)
+        {
+            moveOffset = GAController.DetermineOffset(child.path[i], moveOffset);
+            pos += moveOffset;
+            if (labGrid.grid[pos.x, pos.y] == 1)
+            {
+                break;
+            }
+            Vector3Int tilePos = new Vector3Int(pos.x, pos.y, 0);
+            tileMap.SetColor(tilePos,Color.blue);
+            coloredPath.Add(tilePos);
+            if(pos.x == finish.x && pos.y == finish.y)
+            {
+                foundFinish = true;
+            }
+            i++;
+        }
+        return coloredPath;
+    }
+
 }
