@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class LabGrid
 {
+    
     public int[,] grid { get; set; }
     public int width { get; set; }
     public int height { get; set; }
