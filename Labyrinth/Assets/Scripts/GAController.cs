@@ -22,7 +22,7 @@ public static class GAController
             population = SortForFitness(grid,size, population, start, finish);
             bestOfGeneration.Add(population[0]);
             //population[0].fitnessScore <= 0
-            if (bestOfGeneration.Count > 200) 
+            if (bestOfGeneration.Count > 100 || population[0].dist <= 0) 
             {
                 found = true;
                 break;
@@ -71,11 +71,9 @@ public static class GAController
 
     private static void Mutation(Child child)
     {
-        for (int i = 0; i < 3; i++)
-        {
+
             int mutationPoint = UnityEngine.Random.Range(0, child.path.Count);
             child.path[mutationPoint] = UnityEngine.Random.Range(1,5);
-        }
     }
 
     private static List<int> CrossOver(Child parent1, Child parent2)
@@ -150,8 +148,8 @@ public static class GAController
                 {
                     hitWall = true;
                     hitWallCount++;
-                    childPos -= moveOffset;
-                    break;
+                    //childPos -= moveOffset;
+                    
                 }
                 else
                 {
@@ -173,13 +171,13 @@ public static class GAController
             //else
 
             dist = Vector2Int.Distance(childPos, finish);
+            child.dist = dist;
             child.fitnessScore = 1f/dist;
             //child.fitnessScore *= traveledUntilHit;
             child.fitnessScore = Mathf.Pow(child.fitnessScore, 4);
             //child.fitnessScore *= traveledUntilHit*4;
             //child.fitnessScore = traveledUntilHit; //(Math.Abs(finish.x - childPos.x) + Math.Abs(finish.y - childPos.y)) + (size*size - pathNumUntilHit);
             if (hitWall) child.fitnessScore *= 0.1f;
-
             //1f/dist*dist
             //if (dist < recordDist)
             //{
@@ -245,7 +243,7 @@ public static class GAController
     private static List<int> RandomPath(int size)
     {
         List<int> path = new List<int>();
-        for (int i = 0; i < size*size/2; i++)
+        for (int i = 0; i < size*size/4; i++)
         {
             path.Add(UnityEngine.Random.Range(1, 5));
         }
@@ -257,6 +255,7 @@ public class Child
 {
     public List<int> path;
     public float fitnessScore;
+    public float dist;
 
     public Child(List<int> path)
     {
